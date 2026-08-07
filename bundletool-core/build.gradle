@@ -1,0 +1,48 @@
+import org.gradle.api.attributes.java.TargetJvmEnvironment
+
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.corlebell.bundletool'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 26
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    // Google 官方 bundletool（Maven 版），核心的 AAB -> APK 能力
+    api 'com.android.tools.build:bundletool:1.17.2'
+
+    // bundletool 需要 MoreFiles（仅 jre 变体有）。Android 工程默认会选 android 变体，
+    // 仅写 33.3.1-jre 无效，必须用 TargetJvmEnvironment 强制 standard-jvm。
+    constraints {
+        api('com.google.guava:guava') {
+            attributes {
+                attribute(
+                        TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE,
+                        objects.named(TargetJvmEnvironment, TargetJvmEnvironment.STANDARD_JVM)
+                )
+            }
+        }
+    }
+    api 'com.google.guava:guava:33.3.1-jre'
+    implementation 'com.google.protobuf:protobuf-java:3.22.3'
+
+    // 自签名生成 + Android 上读取 JKS（系统默认不支持完整 JKS）
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+    implementation 'org.bouncycastle:bcpkix-jdk18on:1.78.1'
+}

@@ -1,0 +1,49 @@
+<resources>
+    <string name="app_name">AAB Installer</string>
+    <string name="no_file_selected">未选择文件</string>
+    <string name="btn_pick">选择 AAB 文件</string>
+    <string name="btn_convert">转换并安装</string>
+    <string name="btn_install_again">重新安装 APK 集</string>
+    <string name="btn_url_install">链接安装</string>
+    <string name="btn_signing">签名配置</string>
+    <string name="current_signing">当前签名：%1$s</string>
+    <string name="conversion_log">转换日志</string>
+
+    <string name="menu_signing">签名配置</string>
+    <string name="menu_url_install">链接安装</string>
+    <string name="menu_clear_cache">清理转换缓存</string>
+
+    <string name="state_idle">就绪</string>
+    <string name="state_copying">正在复制文件…</string>
+    <string name="state_parsing">正在解析 AAB…</string>
+    <string name="state_building">正在生成设备 APK 集…</string>
+    <string name="state_signing">正在签名并提取 APK…</string>
+    <string name="state_installing">正在安装 APK 集…</string>
+    <string name="state_success">完成</string>
+    <string name="state_error">出错了</string>
+
+    <string name="perm_dialog_title">需要安装权限</string>
+    <string name="perm_dialog_message">需要允许"安装未知应用"权限才能安装转换后的 APK。</string>
+    <string name="perm_dialog_go">去设置</string>
+
+    <string name="signing_title">签名配置</string>
+    <string name="signing_hint">导入密钥库后填写别名与密码，并点击选用。转换/安装将使用当前选中的签名。</string>
+    <string name="signing_import">导入密钥库</string>
+    <string name="signing_export">导出当前</string>
+    <string name="signing_edit">编辑</string>
+    <string name="signing_delete">删除</string>
+    <string name="signing_name">配置名称</string>
+    <string name="signing_alias">别名 (alias)</string>
+    <string name="signing_store_password">密钥库密码</string>
+    <string name="signing_key_password">别名密码（可与密钥库密码相同）</string>
+
+    <string name="url_install_title">链接安装</string>
+    <string name="url_hint">AAB 下载链接</string>
+    <string name="url_scan">扫码填入</string>
+    <string name="url_scan_prompt">将二维码放入框内</string>
+    <string name="url_download">仅下载</string>
+    <string name="url_download_install">下载并安装</string>
+    <string name="url_download_list">下载记录</string>
+    <string name="url_delete_selected">删除选中</string>
+    <string name="url_install_item">安装</string>
+</resources>

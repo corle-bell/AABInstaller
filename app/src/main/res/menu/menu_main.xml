@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_signing"
+        android:title="@string/menu_signing"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_url_install"
+        android:title="@string/menu_url_install"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_clear_cache"
+        android:title="@string/menu_clear_cache"
+        app:showAsAction="never" />
+</menu>

@@ -1,0 +1,26 @@
+<resources>
+    <style name="Theme.AABInstaller" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/teal_200</item>
+        <!-- 弹出的 Toolbar 菜单：浅色背景 + 深色文字 -->
+        <item name="actionOverflowMenuStyle">@style/Widget.App.PopupMenu.Overflow</item>
+        <item name="popupMenuStyle">@style/Widget.App.PopupMenu</item>
+    </style>
+
+    <style name="Widget.App.PopupMenu" parent="Widget.Material3.PopupMenu.ListPopupWindow">
+        <item name="android:popupBackground">@color/white</item>
+        <item name="android:popupElevation">8dp</item>
+    </style>
+
+    <style name="Widget.App.PopupMenu.Overflow" parent="Widget.Material3.PopupMenu.Overflow">
+        <item name="android:popupBackground">@color/white</item>
+        <item name="android:textColor">@color/black</item>
+    </style>
+
+    <style name="ThemeOverlay.App.PopupMenu" parent="ThemeOverlay.Material3.Light">
+        <item name="android:colorBackground">@color/white</item>
+        <item name="android:textColorPrimary">@color/black</item>
+    </style>
+</resources>
