@@ -41,7 +41,17 @@ installer        PackageInstaller Session 多 APK 原子安装
 
 仓库包含 `.github/workflows/android-build.yml`，**仅支持手动触发**（`workflow_dispatch`），不会在 push/PR 时自动运行。
 
-在 GitHub 仓库页：**Actions → Android Build → Run workflow**，可选择 `debug` 或 `release`。完成后在 Artifacts 下载 APK。
+在 GitHub 仓库页：**Actions → Android Build → Run workflow**，参数说明：
+
+| 参数 | 说明 |
+|------|------|
+| `build_type` | `debug`（默认，可直接安装）或 `release`（未签名） |
+| `publish_release` | 是否发布到 [GitHub Releases](https://github.com/corle-bell/AABInstaller/releases) |
+| `release_tag` | 发布时必填，如 `v1.1.0` |
+| `release_notes` | 发布说明（可选） |
+
+- 不发布：完成后在当次运行的 **Artifacts** 下载 APK
+- 发布：勾选 `publish_release` 并填写 `release_tag`，完成后在 **Releases** 页面下载；`release` 构建会标记为 Pre-release（未签名）
 
 ## 运行要求
 

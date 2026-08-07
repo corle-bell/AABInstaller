@@ -22,7 +22,7 @@
 
 ## 安装
 
-从 [Releases](https://github.com/YOUR_USERNAME/AABInstaller/releases) 下载 `app-debug.apk` 安装，或自行编译（见 [README.dev.md](README.dev.md)）。
+从 [Releases](https://github.com/corle-bell/AABInstaller/releases) 下载 APK 安装（需维护者在 Actions 中勾选发布），或自行编译（见 [README.dev.md](README.dev.md)）。
 
 首次安装若提示未知来源，请在系统设置中允许本应用安装其他应用。
 
