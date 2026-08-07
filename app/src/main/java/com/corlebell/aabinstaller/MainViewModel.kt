@@ -167,7 +167,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         appendLog("证书: ${resolved.subjectDn}")
         appendLog("SHA-256: ${resolved.certificateSha256}")
         if (resolved.builtIn) {
-            appendLog("警告: 当前为内置调试签名，与正式 carout 等密钥不兼容")
+            appendLog("警告: 当前为内置调试签名！")
         }
         val builder = UniversalApkBuilder(app)
         val apks = builder.build(aabFile, workDir, resolved.configuration) { step ->
