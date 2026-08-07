@@ -1,7 +1,11 @@
 package com.corlebell.aabinstaller
 
+import android.content.ContentResolver
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -62,6 +66,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         observeViewModel()
+        handleIncomingIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIncomingIntent(intent)
     }
 
     override fun onResume() {
@@ -96,6 +107,57 @@ class MainActivity : AppCompatActivity() {
             }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun handleIncomingIntent(intent: Intent?) {
+        if (intent == null) return
+        val uri = resolveIncomingUri(intent) ?: return
+
+        if (intent.flags and Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION != 0 &&
+            uri.scheme == ContentResolver.SCHEME_CONTENT
+        ) {
+            try {
+                contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: SecurityException) {
+                // 部分来源不支持持久化 URI 权限
+            }
+        }
+
+        if (!looksLikeAab(uri)) {
+            viewModel.appendLog("提示: 所选文件扩展名不是 .aab，将尝试按 AAB 解析")
+        }
+        viewModel.onFilePicked(uri)
+    }
+
+    private fun resolveIncomingUri(intent: Intent): Uri? = when (intent.action) {
+        Intent.ACTION_VIEW -> intent.data
+        Intent.ACTION_SEND -> {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra(Intent.EXTRA_STREAM)
+            }
+        }
+        else -> null
+    }
+
+    private fun looksLikeAab(uri: Uri): Boolean {
+        val name = queryDisplayName(uri) ?: uri.lastPathSegment ?: return false
+        return name.endsWith(".aab", ignoreCase = true)
+    }
+
+    private fun queryDisplayName(uri: Uri): String? {
+        contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (idx >= 0) return cursor.getString(idx)
+            }
+        }
+        return null
     }
 
     private fun confirmClearCache() {
