@@ -23,7 +23,9 @@ import com.corlebell.aabinstaller.download.UrlInstallActivity
 import com.corlebell.aabinstaller.signing.SigningActivity
 import com.corlebell.installer.ApkInstaller
 import com.corlebell.installer.SystemApkInstaller
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
@@ -53,6 +55,10 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
 
         binding.btnPick.setOnClickListener {
+            if (!aabConversionSupported) {
+                toast(getString(R.string.aab_requires_o))
+                return@setOnClickListener
+            }
             pickAab.launch(arrayOf("*/*"))
         }
         binding.btnConvert.setOnClickListener {
@@ -65,9 +71,18 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SigningActivity::class.java))
         }
 
+        if (!aabConversionSupported) {
+            binding.tvFileName.text = getString(R.string.aab_requires_o)
+            binding.btnPick.isEnabled = false
+            binding.btnConvert.isEnabled = false
+        }
+
         observeViewModel()
         handleIncomingIntent(intent)
     }
+
+    private val aabConversionSupported: Boolean
+        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -126,29 +141,69 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        if (!looksLikeAab(uri)) {
-            viewModel.appendLog("提示: 所选文件扩展名不是 .aab，将尝试按 AAB 解析")
+        val name = displayName(uri)
+        when {
+            name.endsWith(".apk", ignoreCase = true) -> installIncomingApk(uri, name)
+            aabConversionSupported -> {
+                if (!name.endsWith(".aab", ignoreCase = true)) {
+                    viewModel.appendLog("提示: 所选文件扩展名不是 .aab，将尝试按 AAB 解析")
+                }
+                viewModel.onFilePicked(uri)
+            }
+            else -> {
+                viewModel.appendLog(getString(R.string.aab_requires_o))
+                toast(getString(R.string.aab_requires_o))
+            }
         }
-        viewModel.onFilePicked(uri)
+    }
+
+    private fun installIncomingApk(uri: Uri, displayName: String) {
+        lifecycleScope.launch {
+            try {
+                val apk = withContext(Dispatchers.IO) {
+                    val dir = File(cacheDir, "incoming").apply { mkdirs() }
+                    val safeName = displayName
+                        .substringAfterLast('/')
+                        .substringAfterLast('\\')
+                        .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                        .ifBlank { "incoming.apk" }
+                    val dest = File(dir, safeName)
+                    contentResolver.openInputStream(uri)?.use { input ->
+                        dest.outputStream().use { output -> input.copyTo(output) }
+                    } ?: throw IllegalStateException("无法读取 APK")
+                    dest
+                }
+                viewModel.appendLog(
+                    "准备安装 APK: ${apk.name} (${MainViewModel.formatSize(apk.length())})"
+                )
+                tryInstall(listOf(apk))
+            } catch (t: Throwable) {
+                viewModel.appendLog("无法读取 APK: ${t.message ?: t.javaClass.simpleName}")
+                toast("无法读取 APK: ${t.message}")
+            }
+        }
     }
 
     private fun resolveIncomingUri(intent: Intent): Uri? = when (intent.action) {
         Intent.ACTION_VIEW -> intent.data
-        Intent.ACTION_SEND -> {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
-            } else {
-                @Suppress("DEPRECATION")
-                intent.getParcelableExtra(Intent.EXTRA_STREAM)
-            }
-        }
+        Intent.ACTION_SEND -> readStreamUri(intent)
         else -> null
     }
 
-    private fun looksLikeAab(uri: Uri): Boolean {
-        val name = queryDisplayName(uri) ?: uri.lastPathSegment ?: return false
-        return name.endsWith(".aab", ignoreCase = true)
-    }
+    private fun readStreamUri(intent: Intent): Uri? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            readStreamUriTiramisu(intent)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(Intent.EXTRA_STREAM)
+        }
+
+    @android.annotation.SuppressLint("NewApi")
+    private fun readStreamUriTiramisu(intent: Intent): Uri? =
+        intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+
+    private fun displayName(uri: Uri): String =
+        queryDisplayName(uri) ?: uri.lastPathSegment.orEmpty()
 
     private fun queryDisplayName(uri: Uri): String? {
         contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -188,7 +243,7 @@ class MainActivity : AppCompatActivity() {
                         if (selected != null) {
                             binding.tvFileName.text = selected.name
                             binding.tvFileSize.text = MainViewModel.formatSize(selected.size)
-                            binding.btnConvert.isEnabled = true
+                            binding.btnConvert.isEnabled = aabConversionSupported
                         }
                     }
                 }
@@ -218,8 +273,9 @@ class MainActivity : AppCompatActivity() {
             ConvertState.BUILDING, ConvertState.SIGNING
         )
         binding.progress.visibility = if (working) View.VISIBLE else View.INVISIBLE
-        binding.btnPick.isEnabled = !working
-        binding.btnConvert.isEnabled = !working && viewModel.selected.value != null
+        binding.btnPick.isEnabled = aabConversionSupported && !working
+        binding.btnConvert.isEnabled =
+            aabConversionSupported && !working && viewModel.selected.value != null
         binding.btnUrlInstall.isEnabled = !working
         binding.btnSigning.isEnabled = !working
 
@@ -250,13 +306,24 @@ class MainActivity : AppCompatActivity() {
             apksAwaitingPermission = apks
             AlertDialog.Builder(this)
                 .setTitle(R.string.perm_dialog_title)
-                .setMessage(R.string.perm_dialog_message)
+                .setMessage(installPermissionMessage())
                 .setPositiveButton(R.string.perm_dialog_go) { _, _ ->
                     installer.requestInstallPermission(this)
                 }
                 .setNegativeButton(android.R.string.cancel, null)
                 .show()
         }
+    }
+
+    private fun installPermissionMessage(): String =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            getString(R.string.perm_dialog_message)
+        } else {
+            getString(R.string.perm_dialog_message_legacy)
+        }
+
+    private fun toast(msg: String) {
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }
 
     private fun launchInstall(apks: List<File>) {

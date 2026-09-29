@@ -23,7 +23,10 @@
     <string name="state_error">出错了</string>
 
     <string name="perm_dialog_title">需要安装权限</string>
-    <string name="perm_dialog_message">需要允许"安装未知应用"权限才能安装转换后的 APK。</string>
+    <string name="perm_dialog_message">需要允许"安装未知应用"权限才能安装 APK。</string>
+    <string name="perm_dialog_message_legacy">需要在系统安全设置中开启「未知来源」，才能安装 APK。</string>
+    <string name="aab_requires_o">AAB 转换需要 Android 8.0 及以上</string>
+    <string name="unknown_package">无法识别是 APK 还是 AAB</string>
     <string name="perm_dialog_go">去设置</string>
 
     <string name="signing_title">签名配置</string>
@@ -38,7 +41,7 @@
     <string name="signing_key_password">别名密码（可与密钥库密码相同）</string>
 
     <string name="url_install_title">链接安装</string>
-    <string name="url_hint">AAB 下载链接</string>
+    <string name="url_hint">AAB 或 APK 下载链接</string>
     <string name="url_scan">扫码填入</string>
     <string name="url_scan_prompt">将二维码放入框内</string>
     <string name="url_download">仅下载</string>

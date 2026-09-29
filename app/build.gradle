@@ -11,10 +11,10 @@ android {
 
     defaultConfig {
         applicationId "com.corlebell.aabinstaller"
-        minSdk 26
+        minSdk 24
         targetSdk 34
-        versionCode 3
-        versionName "1.1.0"
+        versionCode 4
+        versionName "1.2.0"
     }
 
     buildTypes {
@@ -35,6 +35,19 @@ android {
 
     buildFeatures {
         viewBinding true
+    }
+
+    // bundletool / Guava 里的 MethodHandle.invoke 无法打进 minSdk 24，打包时改写这几处。
+    androidComponents {
+        onVariants(selector().all()) { variant ->
+            variant.instrumentation.transformClassesWith(
+                    com.corlebell.gradle.MethodHandleClassVisitorFactory,
+                    com.android.build.api.instrumentation.InstrumentationScope.ALL
+            ) { }
+            variant.instrumentation.setAsmFramesComputationMode(
+                    com.android.build.api.instrumentation.FramesComputationMode.COMPUTE_FRAMES_FOR_INSTRUMENTED_METHODS
+            )
+        }
     }
 
     packaging {

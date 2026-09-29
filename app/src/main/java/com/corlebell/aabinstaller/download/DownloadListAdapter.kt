@@ -58,7 +58,12 @@ class DownloadListAdapter(
                 DownloadStatus.COMPLETED -> "完成 · ${MainViewModel.formatSize(record.size)}"
                 DownloadStatus.FAILED -> "失败 · ${record.errorMessage}"
             }
-            binding.tvMeta.text = "$statusText · $time"
+            val kindLabel = when (record.kind) {
+                PackageKind.APK -> "APK"
+                PackageKind.AAB -> "AAB"
+                PackageKind.UNKNOWN -> "未知"
+            }
+            binding.tvMeta.text = "$kindLabel · $statusText · $time"
             binding.tvUrl.text = record.url
             binding.check.setOnCheckedChangeListener(null)
             binding.check.isChecked = record.id in selected

@@ -43,9 +43,9 @@ class DownloadRepository(private val context: Context) {
     fun newId(): String = UUID.randomUUID().toString()
 
     fun suggestFileName(url: String): String {
-        val last = url.substringAfterLast('/').substringBefore('?')
-        return if (last.endsWith(".aab", ignoreCase = true)) last
-        else "download-${System.currentTimeMillis()}.aab"
+        val fromUrl = PackageKindResolver.fileNameFromUrl(url)?.let(PackageKindResolver::sanitize)
+        return if (!fromUrl.isNullOrBlank()) fromUrl
+        else "download-${System.currentTimeMillis()}"
     }
 
     private fun persist(list: List<DownloadRecord>) {
@@ -63,6 +63,7 @@ class DownloadRepository(private val context: Context) {
         .put("status", r.status.name)
         .put("errorMessage", r.errorMessage)
         .put("createdAt", r.createdAt)
+        .put("kind", r.kind.name)
 
     private fun fromJson(o: JSONObject) = DownloadRecord(
         id = o.getString("id"),
@@ -73,6 +74,16 @@ class DownloadRepository(private val context: Context) {
         status = runCatching { DownloadStatus.valueOf(o.getString("status")) }
             .getOrDefault(DownloadStatus.FAILED),
         errorMessage = o.optString("errorMessage", ""),
-        createdAt = o.optLong("createdAt", 0)
+        createdAt = o.optLong("createdAt", 0),
+        kind = kindFromJson(o)
     )
+
+    private fun kindFromJson(o: JSONObject): PackageKind {
+        val fileName = o.optString("fileName", "")
+        if (!o.has("kind")) {
+            return PackageKindResolver.fromFileName(fileName) ?: PackageKind.AAB
+        }
+        return runCatching { PackageKind.valueOf(o.getString("kind")) }
+            .getOrDefault(PackageKindResolver.fromFileName(fileName) ?: PackageKind.AAB)
+    }
 }

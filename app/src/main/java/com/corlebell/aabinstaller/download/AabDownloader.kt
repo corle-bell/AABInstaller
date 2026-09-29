@@ -4,6 +4,12 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
+data class DownloadResult(
+    val file: File,
+    val contentType: String?,
+    val contentDisposition: String?
+)
+
 class AabDownloader {
 
     /**
@@ -13,7 +19,7 @@ class AabDownloader {
         url: String,
         dest: File,
         onProgress: (downloaded: Long, total: Long) -> Unit = { _, _ -> }
-    ): File {
+    ): DownloadResult {
         dest.parentFile?.mkdirs()
         val partial = File(dest.parentFile, dest.name + ".part")
         partial.delete()
@@ -32,6 +38,8 @@ class AabDownloader {
                 throw IllegalStateException("下载失败 HTTP $code")
             }
             val total = connection.contentLengthLong
+            val contentType = connection.contentType
+            val contentDisposition = connection.getHeaderField("Content-Disposition")
             connection.inputStream.use { input ->
                 partial.outputStream().use { output ->
                     val buffer = ByteArray(64 * 1024)
@@ -50,7 +58,7 @@ class AabDownloader {
                 partial.copyTo(dest, overwrite = true)
                 partial.delete()
             }
-            return dest
+            return DownloadResult(dest, contentType, contentDisposition)
         } finally {
             connection.disconnect()
         }

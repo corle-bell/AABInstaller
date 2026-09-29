@@ -1,5 +1,6 @@
 package com.corlebell.aabinstaller.download
 
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -57,7 +58,9 @@ class UrlInstallActivity : AppCompatActivity() {
             onSelectionChanged = {
                 binding.btnDeleteSelected.isEnabled = adapter.selectedIds().isNotEmpty()
             },
-            onInstall = { convertAndInstall(File(it.localPath), it.fileName) }
+            onInstall = {
+                routeInstall(File(it.localPath), it.fileName, it.kind, resetLog = true)
+            }
         )
         binding.recycler.layoutManager = LinearLayoutManager(this)
         binding.recycler.adapter = adapter
@@ -118,25 +121,27 @@ class UrlInstallActivity : AppCompatActivity() {
         setProgressVisible(true, 0, "准备下载…")
         val id = downloadRepo.newId()
         val fileName = downloadRepo.suggestFileName(url)
+        val provisionalKind = PackageKindResolver.fromFileName(fileName) ?: PackageKind.UNKNOWN
         if (installAfter) {
             ConversionLog.reset()
             ConversionLog.append("开始下载并安装: $fileName")
         }
-        val dest = File(downloadRepo.downloadsDir, "${id}_$fileName")
+        val dest = File(downloadRepo.downloadsDir, "${id}_${PackageKindResolver.sanitize(fileName)}")
         var record = DownloadRecord(
             id = id,
             url = url,
             fileName = fileName,
             localPath = dest.absolutePath,
             size = 0,
-            status = DownloadStatus.DOWNLOADING
+            status = DownloadStatus.DOWNLOADING,
+            kind = provisionalKind
         )
         downloadRepo.upsert(record)
         refreshList()
 
         lifecycleScope.launch {
             try {
-                val file = withContext(Dispatchers.IO) {
+                val downloaded = withContext(Dispatchers.IO) {
                     downloader.download(url, dest) { downloaded, total ->
                         runOnUiThread {
                             if (total > 0) {
@@ -154,21 +159,30 @@ class UrlInstallActivity : AppCompatActivity() {
                         }
                     }
                 }
+                val resolved = PackageKindResolver.resolve(
+                    url,
+                    downloaded.contentDisposition,
+                    downloaded.file
+                )
+                val file = withContext(Dispatchers.IO) {
+                    placeDownload(downloaded.file, id, resolved.fileName)
+                }
                 record = record.copy(
+                    fileName = resolved.fileName,
+                    localPath = file.absolutePath,
                     size = file.length(),
                     status = DownloadStatus.COMPLETED,
-                    errorMessage = ""
+                    errorMessage = "",
+                    kind = resolved.kind
                 )
                 downloadRepo.upsert(record)
                 refreshList()
-                toast("下载完成: ${file.name}")
+                toast("下载完成: ${resolved.fileName}")
                 if (installAfter) {
                     ConversionLog.append(
-                        "下载完成: ${file.name} (${MainViewModel.formatSize(file.length())})"
+                        "下载完成: ${resolved.fileName} (${MainViewModel.formatSize(file.length())})"
                     )
-                }
-                if (installAfter) {
-                    convertAndInstall(file, fileName, resetLog = false)
+                    routeInstall(file, resolved.fileName, resolved.kind, resetLog = false)
                 } else {
                     busy = false
                     setProgressVisible(false)
@@ -190,11 +204,78 @@ class UrlInstallActivity : AppCompatActivity() {
         }
     }
 
+    private fun routeInstall(
+        file: File,
+        displayName: String,
+        kind: PackageKind,
+        resetLog: Boolean
+    ) {
+        when (kind) {
+            PackageKind.APK -> installApkDirect(file, displayName, resetLog)
+            PackageKind.AAB -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    convertAndInstall(file, displayName, resetLog)
+                } else {
+                    if (resetLog) ConversionLog.reset()
+                    ConversionLog.append(getString(R.string.aab_requires_o))
+                    toast(getString(R.string.aab_requires_o))
+                    busy = false
+                    setProgressVisible(false)
+                }
+            }
+            PackageKind.UNKNOWN -> {
+                if (resetLog) ConversionLog.reset()
+                ConversionLog.append(getString(R.string.unknown_package))
+                toast(getString(R.string.unknown_package))
+                busy = false
+                setProgressVisible(false)
+            }
+        }
+    }
+
+    private fun installApkDirect(apk: File, displayName: String, resetLog: Boolean) {
+        if (!apk.exists() || apk.length() <= 0L) {
+            toast("文件不存在")
+            busy = false
+            setProgressVisible(false)
+            return
+        }
+        if (resetLog) ConversionLog.reset()
+        ConversionLog.append(
+            "准备安装 APK: $displayName (${MainViewModel.formatSize(apk.length())})"
+        )
+        busy = false
+        setProgressVisible(false)
+        tryInstall(listOf(apk))
+    }
+
+    private fun placeDownload(downloaded: File, id: String, fileName: String): File {
+        val dest = File(
+            downloadRepo.downloadsDir,
+            "${id}_${PackageKindResolver.sanitize(fileName)}"
+        )
+        if (downloaded.absolutePath == dest.absolutePath) return downloaded
+        if (dest.exists()) dest.delete()
+        if (!downloaded.renameTo(dest)) {
+            downloaded.copyTo(dest, overwrite = true)
+            downloaded.delete()
+        }
+        return dest
+    }
+
     private fun convertAndInstall(
         aabFile: File,
         displayName: String,
         resetLog: Boolean = true
     ) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            if (resetLog) ConversionLog.reset()
+            ConversionLog.append(getString(R.string.aab_requires_o))
+            toast(getString(R.string.aab_requires_o))
+            busy = false
+            setProgressVisible(false)
+            return
+        }
         if (!aabFile.exists()) {
             toast("文件不存在")
             busy = false
@@ -275,7 +356,7 @@ class UrlInstallActivity : AppCompatActivity() {
             apksAwaitingPermission = apks
             AlertDialog.Builder(this)
                 .setTitle(R.string.perm_dialog_title)
-                .setMessage(R.string.perm_dialog_message)
+                .setMessage(installPermissionMessage())
                 .setPositiveButton(R.string.perm_dialog_go) { _, _ ->
                     installer.requestInstallPermission(this)
                 }
@@ -338,6 +419,13 @@ class UrlInstallActivity : AppCompatActivity() {
         binding.btnDownloadInstall.isEnabled = !visible
         binding.btnScan.isEnabled = !visible
     }
+
+    private fun installPermissionMessage(): String =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            getString(R.string.perm_dialog_message)
+        } else {
+            getString(R.string.perm_dialog_message_legacy)
+        }
 
     private fun toast(msg: String) {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()

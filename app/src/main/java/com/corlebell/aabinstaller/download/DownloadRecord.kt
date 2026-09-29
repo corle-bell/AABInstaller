@@ -14,5 +14,6 @@ data class DownloadRecord(
     val size: Long,
     val status: DownloadStatus,
     val errorMessage: String = "",
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val kind: PackageKind = PackageKind.AAB
 )

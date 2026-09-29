@@ -55,6 +55,6 @@ installer        PackageInstaller Session 多 APK 原子安装
 
 ## 运行要求
 
-- Android 8.0+（minSdk 26）
+- Android 7.0+（minSdk 24）；AAB 转换仍需 Android 8.0（API 26+）
 - arm64-v8a / armeabi-v7a
 - 安装未知应用权限；链接下载需网络；扫码需相机权限

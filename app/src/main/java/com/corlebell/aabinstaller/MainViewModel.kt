@@ -2,6 +2,7 @@ package com.corlebell.aabinstaller
 
 import android.app.Application
 import android.net.Uri
+import android.os.Build
 import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -77,6 +78,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun startConvert() {
+        if (!aabConversionSupported()) return
         val selected = _selected.value ?: return
         if (isWorking()) return
 
@@ -96,6 +98,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun startConvertFromFile(file: File) {
+        if (!aabConversionSupported()) return
         if (isWorking()) return
         ConversionLog.reset()
         viewModelScope.launch {
@@ -110,6 +113,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 appendLog("失败: ${t.message ?: t.javaClass.simpleName}")
             }
         }
+    }
+
+    private fun aabConversionSupported(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) return true
+        _state.value = ConvertState.ERROR
+        appendLog(getApplication<Application>().getString(R.string.aab_requires_o))
+        return false
     }
 
     private fun isWorking(): Boolean =
