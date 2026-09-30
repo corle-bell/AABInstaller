@@ -33,6 +33,15 @@ class DownloadListAdapter(
         onSelectionChanged()
     }
 
+    fun selectAll() {
+        selected.clear()
+        selected.addAll(items.map { it.id })
+        notifyDataSetChanged()
+        onSelectionChanged()
+    }
+
+    fun isAllSelected(): Boolean = items.isNotEmpty() && selected.size == items.size
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
         val binding = ItemDownloadBinding.inflate(
             LayoutInflater.from(parent.context), parent, false

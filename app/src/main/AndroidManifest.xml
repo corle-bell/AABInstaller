@@ -56,6 +56,11 @@
             android:parentActivityName=".MainActivity" />
 
         <activity
+            android:name=".download.DownloadRecordsActivity"
+            android:exported="false"
+            android:parentActivityName=".download.UrlInstallActivity" />
+
+        <activity
             android:name=".download.DownloadSettingsActivity"
             android:exported="false"
             android:parentActivityName=".download.UrlInstallActivity" />

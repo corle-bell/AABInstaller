@@ -10,7 +10,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.corlebell.aabinstaller.ConversionLog
 import com.corlebell.aabinstaller.MainViewModel
 import com.corlebell.aabinstaller.R
@@ -30,12 +29,19 @@ class UrlInstallActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityUrlInstallBinding
     private lateinit var downloadRepo: DownloadRepository
-    private lateinit var adapter: DownloadListAdapter
     private val downloader = AabDownloader()
     private val installer by lazy { SystemApkInstaller(this) }
 
     private var apksAwaitingPermission: List<File>? = null
     private var busy = false
+
+    private val recordsLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val id = result.data?.getStringExtra(DownloadRecordsActivity.EXTRA_INSTALL_ID) ?: return@registerForActivityResult
+        val record = downloadRepo.getById(id) ?: return@registerForActivityResult
+        routeInstall(File(record.localPath), record.fileName, record.kind, resetLog = true)
+    }
 
     private val scanLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -57,28 +63,22 @@ class UrlInstallActivity : AppCompatActivity() {
         binding.toolbar.setNavigationOnClickListener { finish() }
         binding.toolbar.inflateMenu(R.menu.menu_url_install)
         binding.toolbar.setOnMenuItemClickListener { item ->
-            if (item.itemId == R.id.action_download_settings) {
-                startActivity(Intent(this, DownloadSettingsActivity::class.java))
-                true
-            } else {
-                false
+            when (item.itemId) {
+                R.id.action_download_records -> {
+                    recordsLauncher.launch(Intent(this, DownloadRecordsActivity::class.java))
+                    true
+                }
+                R.id.action_download_settings -> {
+                    startActivity(Intent(this, DownloadSettingsActivity::class.java))
+                    true
+                }
+                else -> false
             }
         }
-        adapter = DownloadListAdapter(
-            onSelectionChanged = {
-                binding.btnDeleteSelected.isEnabled = adapter.selectedIds().isNotEmpty()
-            },
-            onInstall = {
-                routeInstall(File(it.localPath), it.fileName, it.kind, resetLog = true)
-            }
-        )
-        binding.recycler.layoutManager = LinearLayoutManager(this)
-        binding.recycler.adapter = adapter
 
         binding.btnScan.setOnClickListener { startScan() }
         binding.btnDownload.setOnClickListener { startDownload(installAfter = false) }
         binding.btnDownloadInstall.setOnClickListener { startDownload(installAfter = true) }
-        binding.btnDeleteSelected.setOnClickListener { deleteSelected() }
 
         lifecycleScope.launch {
             ConversionLog.content.collect { log ->
@@ -88,7 +88,6 @@ class UrlInstallActivity : AppCompatActivity() {
                 }
             }
         }
-        refreshList()
     }
 
     override fun onResume() {
@@ -147,7 +146,6 @@ class UrlInstallActivity : AppCompatActivity() {
             kind = provisionalKind
         )
         downloadRepo.upsert(record)
-        refreshList()
 
         lifecycleScope.launch {
             try {
@@ -186,7 +184,6 @@ class UrlInstallActivity : AppCompatActivity() {
                     kind = resolved.kind
                 )
                 downloadRepo.upsert(record)
-                refreshList()
                 toast("下载完成: ${resolved.fileName}")
                 if (installAfter) {
                     ConversionLog.append(
@@ -203,7 +200,6 @@ class UrlInstallActivity : AppCompatActivity() {
                     errorMessage = t.message ?: t.javaClass.simpleName
                 )
                 downloadRepo.upsert(record)
-                refreshList()
                 busy = false
                 setProgressVisible(false)
                 if (installAfter) {
@@ -394,25 +390,6 @@ class UrlInstallActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    private fun deleteSelected() {
-        val ids = adapter.selectedIds()
-        if (ids.isEmpty()) return
-        AlertDialog.Builder(this)
-            .setTitle(R.string.url_delete_selected)
-            .setMessage("确定删除选中的 ${ids.size} 条下载记录及本地文件？")
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                downloadRepo.delete(ids)
-                adapter.clearSelection()
-                refreshList()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
-    }
-
-    private fun refreshList() {
-        adapter.submit(downloadRepo.getAll())
     }
 
     private fun setProgressVisible(visible: Boolean, progress: Int = 0, text: String = "") {
