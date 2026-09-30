@@ -49,4 +49,13 @@
     <string name="url_download_list">下载记录</string>
     <string name="url_delete_selected">删除选中</string>
     <string name="url_install_item">安装</string>
+    <string name="menu_download_settings">下载设置</string>
+    <string name="download_settings_title">下载设置</string>
+    <string name="download_parallel">分段并行下载</string>
+    <string name="download_segments">分段数</string>
+    <string name="download_segments_2">2 段</string>
+    <string name="download_segments_4">4 段</string>
+    <string name="download_segments_8">8 段</string>
+    <string name="download_large_buffer">单连接时增大读缓冲</string>
+    <string name="download_settings_hint">服务器支持分段时，按所选段数同时下载。不支持、关闭分段，或文件小于 4MB 时走单连接：增大缓冲为 1MB，否则为 64KB。</string>
 </resources>

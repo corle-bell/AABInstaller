@@ -55,6 +55,11 @@
             android:exported="false"
             android:parentActivityName=".MainActivity" />
 
+        <activity
+            android:name=".download.DownloadSettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".download.UrlInstallActivity" />
+
         <!-- 覆盖 ZXing 默认横屏，强制竖屏扫码 -->
         <activity
             android:name="com.journeyapps.barcodescanner.CaptureActivity"

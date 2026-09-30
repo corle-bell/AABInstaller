@@ -1,5 +1,6 @@
 package com.corlebell.aabinstaller.download
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -54,6 +55,15 @@ class UrlInstallActivity : AppCompatActivity() {
         downloadRepo = DownloadRepository(this)
 
         binding.toolbar.setNavigationOnClickListener { finish() }
+        binding.toolbar.inflateMenu(R.menu.menu_url_install)
+        binding.toolbar.setOnMenuItemClickListener { item ->
+            if (item.itemId == R.id.action_download_settings) {
+                startActivity(Intent(this, DownloadSettingsActivity::class.java))
+                true
+            } else {
+                false
+            }
+        }
         adapter = DownloadListAdapter(
             onSelectionChanged = {
                 binding.btnDeleteSelected.isEnabled = adapter.selectedIds().isNotEmpty()
@@ -142,7 +152,7 @@ class UrlInstallActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val downloaded = withContext(Dispatchers.IO) {
-                    downloader.download(url, dest) { downloaded, total ->
+                    downloader.download(url, dest, DownloadSettingsStore(this@UrlInstallActivity).get()) { downloaded, total ->
                         runOnUiThread {
                             if (total > 0) {
                                 val pct = ((downloaded * 100) / total).toInt().coerceIn(0, 100)
